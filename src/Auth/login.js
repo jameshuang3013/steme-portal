@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { useMsal } from "@azure/msal-react";
+import { useMsal, useMsalAuthentication } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 import { loginRequest } from "./azureAuth";
 import {
   Box,
@@ -11,28 +12,34 @@ import {
 } from "@mui/material";
 
 export default function Login() {
-  const { instance } = useMsal();
+  const { instance, inProgress } = useMsal();
   const [error, setError] = useState("");
 
   const handleLogin = async () => {
-  setError("");
+    setError("");
 
-  // Check if inside popup already
-  if (window.opener && !window.opener.closed) {
-    setError("Login is already in progress in a popup window.");
-    return;
-  }
+    // Prevent login if MSAL is already doing something
+    if (inProgress === InteractionStatus.Login || inProgress === InteractionStatus.AcquireToken || inProgress === InteractionStatus.SsoSilent) {
+      setError("Login is already in progress. Please wait.");
+      return;
+    }
 
-  try {
-    const response = await instance.loginPopup({
-      ...loginRequest,
-      prompt: "select_account",
-    });
-    instance.setActiveAccount(response.account);
-  } catch (e) {
-    setError(e.message);
-  }
-};
+    // Extra safety: Check if this is inside a popup
+    if (window.opener && !window.opener.closed) {
+      setError("Login is already in progress in a popup window.");
+      return;
+    }
+
+    try {
+      const response = await instance.loginPopup({
+        ...loginRequest,
+        prompt: "select_account",
+      });
+      instance.setActiveAccount(response.account);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
 
   return (
     <Box
@@ -41,30 +48,27 @@ export default function Login() {
       alignItems="center"
       justifyContent="center"
       px={2}
-      
-       sx={{
-      position: "relative",
-      backgroundImage: 'url("/image.jpg")',
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
-  
-
-      "&::before": {
-      content: '""',
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      backgroundColor: "rgba(0, 0, 0, 0.62)", // dark overlay
-      zIndex: 0,
-    },
-    "& > *": {
-      position: "relative",
-      zIndex: 1,
-    },
-  }}
+      sx={{
+        position: "relative",
+        backgroundImage: 'url("/image.jpg")',
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          backgroundColor: "rgba(0, 0, 0, 0.62)",
+          zIndex: 0,
+        },
+        "& > *": {
+          position: "relative",
+          zIndex: 1,
+        },
+      }}
     >
       <Paper
         elevation={3}
@@ -78,15 +82,11 @@ export default function Login() {
         }}
       >
         <Stack spacing={4} alignItems="center">
-         <Box
+          <Box
             component="img"
             src="/steme.png"
             alt="STEME Portal Logo"
-            sx={{
-              width: 200, 
-              height: "auto",
-              objectFit: "contain",
-            }}
+            sx={{ width: 200, height: "auto", objectFit: "contain" }}
           />
 
           {error && (
