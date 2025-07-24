@@ -15,17 +15,24 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const handleLogin = async () => {
-    setError("");
-    try {
-      const response = await instance.loginPopup({
-        ...loginRequest,
-        prompt: "select_account",
-      });
-      instance.setActiveAccount(response.account);
-    } catch (e) {
-      setError(e.message);
-    }
-  };
+  setError("");
+
+  // Check if inside popup already
+  if (window.opener && !window.opener.closed) {
+    setError("Login is already in progress in a popup window.");
+    return;
+  }
+
+  try {
+    const response = await instance.loginPopup({
+      ...loginRequest,
+      prompt: "select_account",
+    });
+    instance.setActiveAccount(response.account);
+  } catch (e) {
+    setError(e.message);
+  }
+};
 
   return (
     <Box
