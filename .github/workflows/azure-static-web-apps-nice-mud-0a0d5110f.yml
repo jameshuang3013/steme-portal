@@ -17,6 +17,7 @@ jobs:
     env:
       NODE_VERSION: 20.14.0
       STATIC_WEB_APPS_NODE_VERSION: 20.14.0
+      CI: false   
     steps:
       - uses: actions/checkout@v3
         with:
