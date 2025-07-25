@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useMsal, useMsalAuthentication } from "@azure/msal-react";
+import { useMsal } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { loginRequest } from "./azureAuth";
 import {
@@ -14,23 +14,24 @@ import {
 export default function Login() {
   const { instance, inProgress } = useMsal();
   const [error, setError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const handleLogin = async () => {
     setError("");
 
-    // Prevent login if MSAL is already doing something
-    if (inProgress === InteractionStatus.Login || inProgress === InteractionStatus.AcquireToken || inProgress === InteractionStatus.SsoSilent) {
+    // Prevent reentrant or popup conflict
+    if (isLoggingIn || inProgress !== InteractionStatus.None) {
       setError("Login is already in progress. Please wait.");
       return;
     }
 
-    // Extra safety: Check if this is inside a popup
     if (window.opener && !window.opener.closed) {
       setError("Login is already in progress in a popup window.");
       return;
     }
 
     try {
+      setIsLoggingIn(true);
       const response = await instance.loginPopup({
         ...loginRequest,
         prompt: "select_account",
@@ -38,6 +39,8 @@ export default function Login() {
       instance.setActiveAccount(response.account);
     } catch (e) {
       setError(e.message);
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -86,7 +89,11 @@ export default function Login() {
             component="img"
             src="/steme.png"
             alt="STEME Portal Logo"
-            sx={{ width: 200, height: "auto", objectFit: "contain" }}
+            sx={{
+              width: 200,
+              height: "auto",
+              objectFit: "contain",
+            }}
           />
 
           {error && (
@@ -100,6 +107,7 @@ export default function Login() {
             onClick={handleLogin}
             fullWidth
             size="large"
+            disabled={isLoggingIn || inProgress !== InteractionStatus.None}
             sx={{
               textTransform: "none",
               fontWeight: "bold",
@@ -112,7 +120,7 @@ export default function Login() {
               },
             }}
           >
-            Sign in with Microsoft
+            {isLoggingIn ? "Signing in..." : "Sign in with Microsoft"}
           </Button>
 
           <Typography variant="body2" color="text.secondary" align="center">

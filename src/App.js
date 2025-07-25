@@ -1,6 +1,7 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { useMsal } from "@azure/msal-react";
+import { instance } from "./Auth/msalInstance"; // ✅ Make sure this import exists
 
 import Login from "./Auth/login";
 import { AuthContext } from "./Auth/AuthContext";
@@ -19,8 +20,7 @@ import ProfilePage from "./components/ProfilePage";
 import PrivateRoute from "./Auth/privateRoute";
 import EditOutline from "./pages/Teacher/EditOutline";
 import ViewOutline from "./pages/Teacher/ViewOutline";
-import OutlineHistory from "./pages/Teacher/OutlineHistory"; 
-
+import OutlineHistory from "./pages/Teacher/OutlineHistory";
 
 import AdminTeachers from "./pages/Admin/AdminTeachers";
 import AdminStudents from "./pages/Admin/AdminStudents";
@@ -33,11 +33,11 @@ import AnnouncementsTab from "./pages/Teacher/AnnouncementsTab.js";
 import GradesTab from "./pages/Teacher/GradesTab";
 import StudentsTab from "./pages/Teacher/StudentsTab";
 import CourseOutlineTab from "./pages/Teacher/CourseOutlineTab";
-import AttendanceTab from "./pages/Teacher/AttendanceTab.js"
+import AttendanceTab from "./pages/Teacher/AttendanceTab.js";
 import AttendanceHistory from "./pages/Teacher/AttendanceHistory.js";
-import SubmissionsPage from './pages/Teacher/SubmissionsPage';
+import SubmissionsPage from "./pages/Teacher/SubmissionsPage";
 import StudentDetail from "./pages/Teacher/StudentDetail";
-import AssignmentStudents from './pages/Teacher/AssignmentStudents';
+import AssignmentStudents from "./pages/Teacher/AssignmentStudents";
 
 import Pathways from "./pages/Student/pathways";
 import CourseSelection from "./pages/Student/CourseSelection";
@@ -52,6 +52,13 @@ export default function App() {
   const { user, role, loading } = useContext(AuthContext);
   const location = useLocation();
   const hideNavbar = ["/"].includes(location.pathname);
+
+  // ✅ Fix redirect handling loop
+  useEffect(() => {
+    instance.handleRedirectPromise().catch((err) => {
+      console.error("MSAL redirect error:", err);
+    });
+  }, []);
 
   if (loading) return null;
 
@@ -85,17 +92,6 @@ export default function App() {
               </PrivateRoute>
             }
           />
-
-          {/* Student Course Page with tabs */}
-          <Route
-            path="/course/:courseId"
-            element={
-              <PrivateRoute>
-                <StudentCourse user={user} />
-              </PrivateRoute>
-            }
-          />
-
           <Route
             path="/dashboard/student"
             element={
@@ -113,7 +109,17 @@ export default function App() {
             }
           />
 
-          {/* Other pages */}
+          {/* Student Course Page */}
+          <Route
+            path="/course/:courseId"
+            element={
+              <PrivateRoute>
+                <StudentCourse user={user} />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Other Pages */}
           <Route
             path="/profile"
             element={
@@ -146,7 +152,6 @@ export default function App() {
               </PrivateRoute>
             }
           />
-
           <Route
             path="/course/:courseId/history"
             element={
@@ -156,7 +161,7 @@ export default function App() {
             }
           />
 
-          {/* Nested routing for Teacher's CourseDashboard with tabs */}
+          {/* Nested Teacher Tabs */}
           <Route
             path="/dashboard/course/:courseId/*"
             element={
@@ -165,17 +170,16 @@ export default function App() {
               </PrivateRoute>
             }
           >
-            <Route path="assignments" element={<AssignmentsTab user={user}/>} />
             <Route index element={<AnnouncementsTab />} />
+            <Route path="assignments" element={<AssignmentsTab user={user} />} />
             <Route path="grades" element={<GradesTab />} />
             <Route path="students" element={<StudentsTab />} />
             <Route path="outline" element={<CourseOutlineTab />} />
-            <Route path="attendance" element={<AttendanceTab/>}/>
+            <Route path="attendance" element={<AttendanceTab />} />
             <Route path="attendance/:studentId/history" element={<AttendanceHistory />} />
             <Route path="assignment/:assignmentId/submissions/:studentId" element={<SubmissionsPage />} />
             <Route path="assignment/:assignmentId/students" element={<AssignmentStudents />} />
-          </Route> 
-          
+          </Route>
 
           <Route
             path="/outline"
@@ -186,8 +190,7 @@ export default function App() {
             }
           />
 
-          {/* Admin pages */}
-
+          {/* Admin */}
           <Route
             path="/admin/teachers"
             element={
@@ -205,12 +208,9 @@ export default function App() {
             }
           />
 
+          {/* Misc */}
           <Route path="/student/assignments/:assignmentId" element={<StudentAssignmentDetail />} />
-
           <Route path="/students/:studentId" element={<StudentDetail />} />
-
-
-          {/* Course selection */}
           <Route
             path="/course-selection"
             element={
